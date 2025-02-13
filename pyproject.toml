@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "petsc"
 version = "1.0"
 authors = [
-    {name = "Len Feremans", email = "l.feremans@gmail.com"},
+    {name = "Len Feremans", email = "len.feremans@gmail.com"},
 ]
 maintainers = [
     {name = "Stijn J. Rotman", email = "s.j.rotman@uvt.nl"}
