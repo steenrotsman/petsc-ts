@@ -73,18 +73,21 @@ class PetsTransformer:
 
     def _embed(self, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
-        for pattern_idx, pattern in enumerate(patterns):
+        for pat_idx, pattern in enumerate(patterns):
             for window_idx in pattern.projection.keys():
                 ts_idx = labels[window_idx]
-                embedding[ts_idx][pattern_idx] += 1
+                embedding[ts_idx][pat_idx] += 1
         return embedding
 
     def _embed_soft(self, windows, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
-        for pattern_idx, pattern in enumerate(patterns):
+        for pat_idx, pattern in enumerate(patterns):
             for window_idx, window in enumerate(windows):
                 ts_idx = labels[window_idx]
-                embedding[ts_idx][pattern_idx] += self._find(window, pattern.pattern)
+                if window_idx in pattern.projection:
+                    embedding[ts_idx][pat_idx] += 1
+                else:
+                    embedding[ts_idx][pat_idx] += self._find(window, pattern.pattern)
         return embedding
 
     def _find(self, window, pattern):
