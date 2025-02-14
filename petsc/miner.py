@@ -37,7 +37,7 @@ class PatternMiner:
             # Only generate candidates if they are short enough
             if len(pattern) < self.max_size:
                 for item in pattern.candidates:
-                    candidate = pattern.pattern + [item]
+                    candidate = pattern.pattern + [int(item)]
                     projection = self.compute_projection_incremental(ts, pattern, item)
 
                     # Don't add candidate if its support is lower than kth patttern
