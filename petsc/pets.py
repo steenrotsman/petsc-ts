@@ -1,6 +1,7 @@
 import numpy as np
 
 from .miner import PatternMiner
+from .pattern import Pattern
 from .preprocessing import SAX
 
 
@@ -59,35 +60,47 @@ class PetsTransformer:
 
     def transform(self, X):
         embedding = np.zeros((X.shape[0], 0), dtype=int)
+        if self.soft:
+            embed = self._embed_soft
+        else:
+            embed = self._embed
+
         it = zip(np.moveaxis(X, 1, 0), self.windows, self.patterns_)
         for ts, window, patterns in it:
             self.sax.window = window
             discrete, labels = self.sax.transform(ts)
-            if self.soft:
-                embedding = np.hstack(
-                    (embedding, self._embed_soft(discrete, labels, patterns))
-                )
-            else:
-                embedding = np.hstack((embedding, self._embed(labels, patterns)))
+            embedding = np.hstack((embedding, embed(discrete, labels, patterns)))
+
         return embedding
 
-    def _embed(self, labels, patterns):
+    def _embed(self, windows, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
         for pat_idx, pattern in enumerate(patterns):
-            for window_idx in pattern.projection.keys():
+            projection = self._project(windows, pattern)
+            for window_idx in projection.keys():
                 ts_idx = labels[window_idx]
                 embedding[ts_idx][pat_idx] += 1
         return embedding
+
+    def _project(self, ts, pattern):
+        item = [pattern.pattern[0]]
+        projection = self.miner.compute_projection_singleton(ts, item)
+        candidates = self.miner.get_candidates(ts, projection, item)
+        current_pattern = Pattern(item, projection, candidates)
+
+        for item in pattern.pattern[1:]:
+            p = self.miner.compute_projection_incremental(ts, current_pattern, item)
+            current_pattern.projection = p
+            current_pattern.pattern += [item]
+
+        return current_pattern.projection
 
     def _embed_soft(self, windows, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
         for pat_idx, pattern in enumerate(patterns):
             for window_idx, window in enumerate(windows):
                 ts_idx = labels[window_idx]
-                if window_idx in pattern.projection:
-                    embedding[ts_idx][pat_idx] += 1
-                else:
-                    embedding[ts_idx][pat_idx] += self._find(window, pattern.pattern)
+                embedding[ts_idx][pat_idx] += self._find(window, pattern.pattern)
         return embedding
 
     def _find(self, window, pattern):
