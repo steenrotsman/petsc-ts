@@ -12,7 +12,6 @@ class SAX:
         self.breakpoints = norm.ppf(np.arange(1, alpha) / alpha, loc=0)
 
     def transform(self, X):
-        X = np.squeeze(X)
         discrete = []
         labels = []
         for label, ts in enumerate(X):
