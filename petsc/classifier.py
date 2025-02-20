@@ -1,4 +1,7 @@
+from itertools import chain
+
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -6,6 +9,7 @@ from sktime.classification._delegate import _DelegatedClassifier
 from sktime.transformations.panel.padder import PaddingTransformer
 
 from .pets import PetsTransformer
+from .preprocessing import SAX
 
 
 class PetsClassifier(_DelegatedClassifier):
@@ -72,5 +76,48 @@ class PetsClassifier(_DelegatedClassifier):
         )
 
         scaler = StandardScaler()
-        clsf = RidgeClassifierCV()
-        self.estimator_ = make_pipeline(padder, self.pets, scaler, clsf)
+        self.classifier = RidgeClassifierCV()
+        self.estimator_ = make_pipeline(padder, self.pets, scaler, self.classifier)
+
+    def get_attribution(self, x, reference=None):
+        if self.duration > 1:
+            raise ValueError("Can only get attribution of patterns if duration=1")
+        if self.soft:
+            raise ValueError("Can only get attribution of patterns if soft=False")
+
+        if reference is None:
+            reference = self.predict(np.expand_dims(x, 0))[0][0]
+        elif reference in self.classes_:
+            reference = np.nonzero(self.classes_ == reference)[0][0]
+        else:
+            raise ValueError(f"Class {reference} must be one of {self.classes_}")
+        if self.n_classes_ == 2 and reference == self.classes_[0]:
+            coefs = -self.classifier.coef_
+        elif self.n_classes_ == 2 and self.classes_[1]:
+            coefs = self.classifier.coef_
+        else:
+            coefs = self.classifier.coef_[reference]
+
+        # Give each pattern its coefficient
+        for pattern, coef in zip(chain.from_iterable(self.pets.patterns_), coefs):
+            pattern.coef = coef
+
+        attribution = np.zeros(x.shape)
+        sax = SAX(self.window, self.stride, self.w, self.alpha)
+        i = zip(enumerate(x), self.pets.windows, self.pets.patterns_)
+        for (signal, ts), window, patterns in i:
+            sax.window = window
+
+            discrete = sax.discretise(ts)
+
+            for pattern in patterns:
+                win = sliding_window_view(discrete, len(pattern.pattern), axis=1)
+                indexes = np.where(np.all(win == pattern.pattern, axis=2))
+                for w_idx, start in zip(*indexes):
+                    factor = window / self.w
+                    ts_start = w_idx * self.stride + int(start * factor)
+                    end = start + len(pattern.pattern)
+                    ts_end = w_idx * self.stride + int(end * factor)
+                    attribution[signal, ts_start:ts_end] += pattern.coef
+
+        return attribution
