@@ -2,7 +2,6 @@ from functools import partial
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import zscore
 from sktime.datasets import load_from_tsfile, load_UCR_UEA_dataset
 
 from petsc.classifier import PetsClassifier
@@ -26,7 +25,7 @@ def main():
             axs = [axs]
         xs = np.arange(ts.shape[1])
         for signal, att, ax in zip(ts, attribution, axs):
-            att = zscore(att)
+            att = (att - np.mean(att)) / np.std(att)
             for i in range(len(xs) - 1):
                 x1, x2 = xs[i], xs[i + 1]
                 y1, y2 = signal[i], signal[i + 1]
