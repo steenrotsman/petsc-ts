@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
+from sax_ts import sax
 from scipy.stats import norm, zscore
 
 
@@ -15,9 +16,9 @@ class SAX:
         discrete = []
         labels = []
         for label, ts in enumerate(X):
-            d = self.discretise(ts)
+            d = sax(ts, self.window, self.stride, self.w, self.alpha)
             discrete.append(d)
-            labels += [label] * d.shape[0]
+            labels += [label] * len(d)
         return np.vstack(discrete), labels
 
     def discretise(self, row):

@@ -21,4 +21,5 @@ dependencies = [
     "scipy",
     "scikit-learn",
     "sktime",
+    "sax-ts @ git+https://github.com/steenrotsman/sax-ts.git",
 ]

@@ -2,6 +2,7 @@ from itertools import chain
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
+from sax_ts import sax
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -9,7 +10,6 @@ from sktime.classification._delegate import _DelegatedClassifier
 from sktime.transformations.panel.padder import PaddingTransformer
 
 from .pets import PetsTransformer
-from .preprocessing import SAX
 
 
 class PetsClassifier(_DelegatedClassifier):
@@ -103,12 +103,10 @@ class PetsClassifier(_DelegatedClassifier):
             pattern.coef = coef
 
         attribution = np.zeros(x.shape)
-        sax = SAX(self.window, self.stride, self.w, self.alpha)
         i = zip(enumerate(x), self.pets.windows, self.pets.patterns_)
         for (signal, ts), window, patterns in i:
-            sax.window = window
-
-            discrete = sax.discretise(ts)
+            self.window = window
+            discrete = sax(ts, self.window, self.stride, self.w, self.alpha)
 
             for pattern in patterns:
                 win = sliding_window_view(discrete, len(pattern.pattern), axis=1)
