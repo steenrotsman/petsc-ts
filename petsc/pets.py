@@ -1,7 +1,6 @@
 import numpy as np
+from petsc_miner import Pattern, PatternMiner
 
-from .miner import PatternMiner
-from .pattern import Pattern
 from .preprocessing import SAX
 
 
@@ -48,9 +47,6 @@ class PetsTransformer:
             while True:
                 discrete, _ = self.sax.transform(ts)
                 patterns = self.miner.mine(discrete)
-                for pattern in patterns:
-                    pattern.signal = signal
-                    pattern.window = self.sax.window
                 self.patterns_.append(patterns)
                 self.windows.append(self.sax.window)
                 self.sax.window //= 2
@@ -83,10 +79,10 @@ class PetsTransformer:
         return embedding
 
     def _project(self, ts, pattern):
-        item = [pattern.pattern[0]]
+        item = pattern.pattern[0]
         projection = self.miner.compute_projection_singleton(ts, item)
-        candidates = self.miner.get_candidates(ts, projection, item)
-        current_pattern = Pattern(item, projection, candidates)
+        candidates = self.miner.get_candidates(ts, projection, [item])
+        current_pattern = Pattern([item], projection, candidates)
 
         for item in pattern.pattern[1:]:
             p = self.miner.compute_projection_incremental(ts, current_pattern, item)
