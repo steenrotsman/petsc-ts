@@ -57,7 +57,6 @@ class PatternMiner:
                 self.n_ += 1
             else:
                 heapq.heappushpop(self.patterns_, pattern)
-                self.n_ += 1
 
         if self.sort_alpha:
             return sorted(self.patterns_, key=lambda p: p.pattern)
