@@ -4,7 +4,7 @@
 
 #include "miner.h"
 #include "pattern.h"
-
+#include "typing.h"
 
 PatternMiner::PatternMiner(int alpha, int min_size, int max_size, double duration, int k, bool sort_alpha) : alpha(alpha), min_size(min_size), max_size(max_size), duration(duration), k(k), sort_alpha(sort_alpha), n(0)
 {
@@ -14,6 +14,11 @@ PatternMiner::PatternMiner(int alpha, int min_size, int max_size, double duratio
 
 std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts)
 {
+    // Reset from previous calls
+    n = 0;
+    patterns = std::priority_queue<Pattern, std::vector<Pattern>, std::greater<Pattern>>();
+    queue = std::priority_queue<Pattern>();
+
     // Initializes queue with singletons
     mine_singletons(ts);
 
