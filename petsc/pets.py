@@ -97,10 +97,6 @@ class PetsTransformer(BaseTransformer):
 
     def transform(self, X):
         embedding = np.zeros((len(X), 0), dtype=int)
-        if self.soft:
-            embed = self._embed_soft
-        else:
-            embed = self._embed
 
         n_signals = X[0].shape[0]
         signals = cycle([[x[signal] for x in X] for signal in range(n_signals)])
@@ -108,25 +104,21 @@ class PetsTransformer(BaseTransformer):
         for ts, window, patterns in it:
             self.sax.window = window
             discrete, labels = self.sax.transform(ts)
-            embedding = np.hstack((embedding, embed(discrete, labels, patterns)))
+            embedding = np.hstack((embedding, self._embed(discrete, labels, patterns)))
 
         return embedding
 
-    def _embed(self, windows, labels, patterns):
+    def _embed(self, discrete, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
         for pat_idx, pattern in enumerate(patterns):
-            projection = self.miner.project(windows, pattern)
-            for window_idx in projection.keys():
+            projection = self.miner.project(discrete, pattern)
+            for window_idx, window in enumerate(discrete):
                 ts_idx = labels[window_idx]
-                embedding[ts_idx][pat_idx] += 1
-        return embedding
+                if window_idx in projection:
+                    embedding[ts_idx][pat_idx] += 1
+                elif self.soft:
+                    embedding[ts_idx][pat_idx] += self._find(window, pattern.pattern)
 
-    def _embed_soft(self, windows, labels, patterns):
-        embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
-        for pat_idx, pattern in enumerate(patterns):
-            for window_idx, window in enumerate(windows):
-                ts_idx = labels[window_idx]
-                embedding[ts_idx][pat_idx] += self._find(window, pattern.pattern)
         return embedding
 
     def _find(self, window, pattern):
