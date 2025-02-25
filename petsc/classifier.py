@@ -1,24 +1,23 @@
 from itertools import chain
 
 import numpy as np
+from aeon.classification import BaseClassifier
 from numpy.lib.stride_tricks import sliding_window_view
 from sax_ts import sax
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-from sktime.classification._delegate import _DelegatedClassifier
-from sktime.transformations.panel.padder import PaddingTransformer
 
 from .pets import PetsTransformer
 
 
-class PetsClassifier(_DelegatedClassifier):
+class PetsClassifier(BaseClassifier):
     """PETSC: Pattern-based Embedding for Time Series Classification."""
 
     _tags = {
-        "X_inner_mtype": "numpy3D",
-        "y_inner_mtype": "numpy1D",
-        "capability:unequal_length": False,
+        "X_inner_type": ["numpy3D", "np-list"],
+        "y_inner_type": "numpy1D",
+        "capability:unequal_length": True,
         "capability:multivariate": True,
         "capability:predict_proba": True,
     }
@@ -44,7 +43,6 @@ class PetsClassifier(_DelegatedClassifier):
             raise ValueError("min_size cannot be larger than window.")
         if duration > 1 and soft:
             raise ValueError("soft = True requires duration = 1.0")
-        super().__init__()
 
         self.window = window
         self.stride = stride
@@ -59,27 +57,96 @@ class PetsClassifier(_DelegatedClassifier):
         self.soft = soft
         self.tau = tau
 
-        padder = PaddingTransformer(fill_value=np.nan)
-        self.pets = PetsTransformer(
-            window,
-            stride,
-            w,
-            alpha,
-            min_size,
-            max_size,
-            duration,
-            k,
-            sort_alpha,
-            multiresolution,
-            soft,
-            tau,
+        super().__init__()
+
+    def _fit(self, X, y):
+        """Fit PETSC to training data.
+
+        Parameters
+        ----------
+        X : 3D np.ndarray (any number of channels, equal length series)
+                of shape (n_cases, n_channels, n_timepoints)
+            or list of numpy arrays (any number of channels, unequal length series)
+                of shape [n_cases], 2D np.array (n_channels, n_timepoints_i), where
+                n_timepoints_i is length of series i
+        y : 1D np.array, of shape [n_cases] - class labels for fitting
+            indices correspond to instance indices in X
+
+        Returns
+        -------
+        self :
+            Reference to self.
+        """
+        self._transformer = PetsTransformer(
+            self.window,
+            self.stride,
+            self.w,
+            self.alpha,
+            self.min_size,
+            self.max_size,
+            self.duration,
+            self.k,
+            self.sort_alpha,
+            self.multiresolution,
+            self.soft,
+            self.tau,
         )
 
-        scaler = StandardScaler()
-        self.classifier = RidgeClassifierCV()
-        self.estimator_ = make_pipeline(padder, self.pets, scaler, self.classifier)
+        self._scaler = StandardScaler()
+        self._estimator = RidgeClassifierCV()
+
+        self.pipeline_ = make_pipeline(
+            self._transformer,
+            self._scaler,
+            self._estimator,
+        )
+        self.pipeline_.fit(X, y)
+
+        return self
+
+    def _predict(self, X) -> np.ndarray:
+        """Predicts labels for sequences in X.
+
+        Parameters
+        ----------
+        X : 3D np.ndarray of shape = (n_cases, n_channels, n_timepoints)
+            The data to make predictions for.
+
+        Returns
+        -------
+        y : array-like, shape = (n_cases,)
+            Predicted class labels.
+        """
+        return self.pipeline_.predict(X)
+
+    def _predict_proba(self, X) -> np.ndarray:
+        """Predicts labels probabilities for sequences in X.
+
+        Parameters
+        ----------
+        X : 3D np.ndarray of shape = (n_cases, n_channels, n_timepoints)
+            The data to make predict probabilities for.
+
+        Returns
+        -------
+        y : array-like, shape = (n_cases, n_classes_)
+            Predicted probabilities using the ordering in classes_.
+        """
+        return self.pipeline_.predict_proba(X)
 
     def get_attribution(self, x, reference=None):
+        """Get classification attribution of one row.
+
+        Parameters
+        ----------
+        x : 2D np.ndarray of shape (n_channels, n_timepoints)
+            or 1D np.ndarray of shape (n_timepoints)
+
+        Returns
+        -------
+        attribution :
+            Coefficient values of the patterns that each time point is part of.
+        """
         if self.duration > 1:
             raise ValueError("Can only get attribution of patterns if duration=1")
         if self.soft:
@@ -92,18 +159,20 @@ class PetsClassifier(_DelegatedClassifier):
         else:
             raise ValueError(f"Class {reference} must be one of {self.classes_}")
         if self.n_classes_ == 2 and reference == self.classes_[0]:
-            coefs = -self.classifier.coef_
+            coefs = -self._estimator.coef_[0]
         elif self.n_classes_ == 2 and self.classes_[1]:
-            coefs = self.classifier.coef_
+            coefs = self._estimator.coef_[0]
         else:
-            coefs = self.classifier.coef_[reference]
+            coefs = self._estimator.coef_[reference]
 
         # Give each pattern its coefficient
-        for pattern, coef in zip(chain.from_iterable(self.pets.patterns_), coefs):
+        for pattern, coef in zip(
+            chain.from_iterable(self._transformer.patterns_), coefs
+        ):
             pattern.coef = coef
 
         attribution = np.zeros(x.shape)
-        i = zip(enumerate(x), self.pets.windows, self.pets.patterns_)
+        i = zip(enumerate(x), self._transformer.windows_, self._transformer.patterns_)
         for (signal, ts), window, patterns in i:
             self.window = window
             discrete = sax(ts, self.window, self.stride, self.w, self.alpha)

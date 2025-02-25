@@ -19,7 +19,7 @@ license = {text = "MIT"}
 dependencies = [
     "numpy",
     "scikit-learn",
-    "sktime",
+    "aeon",
     "sax-ts @ git+https://github.com/steenrotsman/sax-ts.git",
 ]
 
