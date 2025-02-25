@@ -22,3 +22,6 @@ dependencies = [
     "sktime",
     "sax-ts @ git+https://github.com/steenrotsman/sax-ts.git",
 ]
+
+[tool.setuptools.packages.find]
+include = ["petsc"]
