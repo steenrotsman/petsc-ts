@@ -1,12 +1,26 @@
 from itertools import cycle
 
 import numpy as np
-from petsc_miner import Pattern, PatternMiner
+from aeon.transformations.base import BaseTransformer
+from petsc_miner import PatternMiner
 
 from .preprocessing import SAX
 
 
-class PetsTransformer:
+class PetsTransformer(BaseTransformer):
+    """PETS: Create Pattern-based Embeddings from Time Series."""
+
+    _tags = {
+        "X_inner_type": ["numpy3D", "np-list"],
+        "y_inner_type": "numpy1D",
+        "capability:unequal_length": True,
+        "capability:multivariate": True,
+        "capability:predict_proba": True,
+        "output_data_type": "Tabular",
+        "fit_is_empty": False,
+        "requires_y": False,
+    }
+
     def __init__(
         self,
         window,
@@ -101,24 +115,11 @@ class PetsTransformer:
     def _embed(self, windows, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
         for pat_idx, pattern in enumerate(patterns):
-            projection = self._project(windows, pattern)
+            projection = self.miner.project(windows, pattern)
             for window_idx in projection.keys():
                 ts_idx = labels[window_idx]
                 embedding[ts_idx][pat_idx] += 1
         return embedding
-
-    def _project(self, ts, pattern):
-        item = pattern.pattern[0]
-        projection = self.miner.compute_projection_singleton(ts, item)
-        candidates = self.miner.get_candidates(ts, projection, [item])
-        current_pattern = Pattern([item], projection, candidates)
-
-        for item in pattern.pattern[1:]:
-            p = self.miner.compute_projection_incremental(ts, current_pattern, item)
-            current_pattern.projection = p
-            current_pattern.pattern += [item]
-
-        return current_pattern.projection
 
     def _embed_soft(self, windows, labels, patterns):
         embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)

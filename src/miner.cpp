@@ -6,12 +6,14 @@
 #include "pattern.h"
 #include "typing.h"
 
+// --- Constructor ---
 PatternMiner::PatternMiner(int alpha, int min_size, int max_size, double duration, int k, bool sort_alpha) : alpha(alpha), min_size(min_size), max_size(max_size), duration(duration), k(k), sort_alpha(sort_alpha), n(0)
 {
     max_duration = max_size * duration;
     max_gaps = max_duration - max_size;
 }
 
+// --- Public Methods ---
 std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts)
 {
     // Reset from previous calls
@@ -45,7 +47,7 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts)
                 }
             }
         }
-        
+
         // Add pattern to patterns if length and support are high enough
         if (pattern.pattern.size() >= static_cast<size_t>(min_size))
         {
@@ -53,7 +55,8 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts)
             {
                 patterns.push(pattern);
                 ++n;
-            } else if (pattern > patterns.top())
+            }
+            else if (pattern > patterns.top())
             {
                 patterns.pop();
                 patterns.push(pattern);
@@ -73,13 +76,30 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts)
     if (sort_alpha)
     {
         std::sort(result.begin(), result.end(), [](const Pattern &a, const Pattern &b)
-        {
-            return a.pattern < b.pattern;
-        });
+                  { return a.pattern < b.pattern; });
     }
     return result;
 }
 
+Projection PatternMiner::project(DiscreteDB &ts, Pattern pattern)
+{
+    int item = pattern.pattern[0];
+    Projection projection = compute_projection_singleton(ts, item);
+    Candidates candidates = get_candidates(ts, projection, {item});
+    Pattern current_pattern = Pattern({item}, projection, candidates);
+
+    for (size_t i = 1; i < pattern.pattern.size(); ++i)
+    {
+        int next_item = pattern.pattern[i];
+        auto p = compute_projection_incremental(ts, current_pattern, next_item);
+        current_pattern.projection = p;
+        current_pattern.pattern.push_back(next_item);
+    }
+
+    return current_pattern.projection;
+}
+
+// --- Private Methods ---
 void PatternMiner::mine_singletons(DiscreteDB &ts)
 {
     // Assume that every sax symbol occurs at least once
@@ -137,7 +157,8 @@ Candidates PatternMiner::get_candidates(DiscreteDB &ts, const Projection &projec
     Candidates candidates;
     for (const auto &[ts_idx, range] : projection)
     {
-        if (candidates.size() == static_cast<size_t>(alpha)) break;
+        if (candidates.size() == static_cast<size_t>(alpha))
+            break;
 
         int start = range.first, end = range.second;
         int current_max_size = start + max_duration;
