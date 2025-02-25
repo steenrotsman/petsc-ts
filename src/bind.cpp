@@ -16,10 +16,15 @@ PYBIND11_MODULE(petsc_miner, m) {
         .def_readwrite("support", &Pattern::support)
         .def_readwrite("coef", &Pattern::coef)
         .def("__repr__", [](Pattern &m){
-            std::string s;
-            for (auto c : m.pattern)
-                s += static_cast<char>(c);
-            return "Pattern('[" + s + "]')";
+            std::string s = "Pattern([";
+            for (size_t i = 0; i < m.pattern.size(); ++i) {
+                s += std::to_string(m.pattern[i]);
+                if (i < m.pattern.size() - 1) {
+                    s += ", ";
+                }
+            }
+            s += "])";
+            return s;
         })
         ;
 
