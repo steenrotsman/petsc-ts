@@ -1,3 +1,5 @@
+from itertools import cycle
+
 import numpy as np
 from petsc_miner import Pattern, PatternMiner
 
@@ -32,36 +34,58 @@ class PetsTransformer:
         self.miner = PatternMiner(alpha, min_size, max_size, duration, k, sort_alpha)
 
         self.patterns_ = []
-        self.windows = []
+        self.windows_ = []
+        self.data_ = []
 
-    # Technically, fit_transform would be faster than .fit().transform(), because the
-    # separate calls require separate discretisation calls. However, discretisation
-    # is very efficient and separate methods are more maintainable
+    def fit_transform(self, X, y=None):
+        self.fit(X)
+
+        embedding = np.zeros((len(X), 0), dtype=int)
+
+        it = zip(self.data_, self.windows_, self.patterns_)
+        for (discrete, labels), window, patterns in it:
+            col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
+            for pat_idx, pattern in enumerate(patterns):
+                for window_idx, window in enumerate(discrete):
+                    ts_idx = labels[window_idx]
+                    if window_idx in pattern.projection:
+                        col[ts_idx][pat_idx] += 1
+                    elif self.soft:
+                        col[ts_idx][pat_idx] += self._find(window, pattern.pattern)
+            embedding = np.hstack((embedding, col))
+
+        return embedding
+
     def fit(self, X, y=None):
-        # Start with window at min ts length and reduce window each iteration while >w
-        if self.multiresolution:
-            self.sax.window = np.min(np.sum(~np.isnan(X), axis=2))
-
         # Mine each multivariate signal separately
-        for signal, ts in enumerate(np.moveaxis(X, 1, 0)):
+        n_signals = X[0].shape[0]
+        signals = [[x[signal] for x in X] for signal in range(n_signals)]
+        for signal, ts in enumerate(signals):
+            # Start with window at min ts length and reduce window each iteration
+            if self.multiresolution:
+                self.sax.window = min(row.shape[1] for row in X)
             while True:
-                discrete, _ = self.sax.transform(ts)
+                discrete, labels = self.sax.transform(ts)
+                self.data_.append((discrete, labels))
                 patterns = self.miner.mine(discrete)
                 self.patterns_.append(patterns)
-                self.windows.append(self.sax.window)
-                self.sax.window //= 2
-                if not self.multiresolution or self.sax.window < self.w:
-                    break
+                self.windows_.append(self.sax.window)
+                if self.multiresolution:
+                    self.sax.window //= 2
+                    if self.sax.window < self.w:
+                        break
         return self
 
     def transform(self, X):
-        embedding = np.zeros((X.shape[0], 0), dtype=int)
+        embedding = np.zeros((len(X), 0), dtype=int)
         if self.soft:
             embed = self._embed_soft
         else:
             embed = self._embed
 
-        it = zip(np.moveaxis(X, 1, 0), self.windows, self.patterns_)
+        n_signals = X[0].shape[0]
+        signals = cycle([[x[signal] for x in X] for signal in range(n_signals)])
+        it = zip(signals, self.windows_, self.patterns_)
         for ts, window, patterns in it:
             self.sax.window = window
             discrete, labels = self.sax.transform(ts)
