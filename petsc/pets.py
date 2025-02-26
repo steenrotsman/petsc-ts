@@ -96,16 +96,28 @@ class PetsTransformer(BaseTransformer):
         return self
 
     def transform(self, X):
-        embedding = np.zeros((len(X), 0), dtype=int)
-
+        embedding = []
         n_signals = X[0].shape[0]
         signals = cycle([[x[signal] for x in X] for signal in range(n_signals)])
         it = zip(signals, self.windows_, self.patterns_)
         for ts, window, patterns in it:
             self.sax.window = window
             discrete, labels = self.sax.transform(ts)
-            embedding = np.hstack((embedding, self._embed(discrete, labels, patterns)))
+            col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
+            for pat_idx, pattern in enumerate(patterns):
+                projection = self.miner.project(discrete, pattern)
+                matches = np.array(sorted(projection))
+                if len(matches) > 0:
+                    ts_indices = np.array([labels[idx] for idx in matches])
+                    np.add.at(col, (ts_indices, pat_idx), 1)
+                if self.soft:
+                    for window_idx, window in enumerate(discrete):
+                        ts_idx = labels[window_idx]
+                        if window_idx not in projection:
+                            col[ts_idx][pat_idx] += self._find(window, pattern.pattern)
+            embedding.append(col)
 
+        embedding = np.concatenate(embedding, axis=1)
         return embedding
 
     def _embed(self, discrete, labels, patterns):
