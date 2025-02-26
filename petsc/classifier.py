@@ -28,7 +28,7 @@ class PetsClassifier(BaseClassifier):
         alpha=4,
         window=None,
         stride=1,
-        min_size=1,
+        min_size=5,
         max_size=None,
         duration=1.1,
         k=200,
