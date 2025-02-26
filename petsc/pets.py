@@ -74,6 +74,8 @@ class PetsTransformer:
                     self.sax.window //= 2
                     if self.sax.window < self.w:
                         break
+                else:
+                    break
         return self
 
     def transform(self, X):
