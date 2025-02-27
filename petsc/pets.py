@@ -57,18 +57,21 @@ class PetsTransformer(BaseTransformer):
 
     def fit(self, X, y=None):
         # Mine each multivariate signal separately
-        n_signals = X[0].shape[0]
-        signals = [[x[signal] for x in X] for signal in range(n_signals)]
-        for signal, ts in enumerate(signals):
+        for ts in self._get_signals(X):
             # Start with window at min ts length and reduce window each iteration
             if self.multiresolution:
                 self.sax.window = min(row.shape[1] for row in X)
+
             while True:
                 discrete, labels = self.sax.transform(ts)
-                self._data.append((discrete, labels))
                 patterns = self.miner.mine(discrete)
+
+                # Store for use in _transform
+                self._data.append((discrete, labels))
                 self.patterns_.append(patterns)
                 self.windows_.append(self.sax.window)
+
+                # Add more patterns with halved window while window >= SAX word size
                 if self.multiresolution:
                     self.sax.window //= 2
                     if self.sax.window < self.w:
@@ -81,11 +84,10 @@ class PetsTransformer(BaseTransformer):
         return self._transform(X)
 
     def _transform(self, X=None):
+        # Caller is fit_transform; _data is already filled, else preprocess new data
         if X is not None:
-            n_signals = X[0].shape[0]
-            signals = cycle([[x[signal] for x in X] for signal in range(n_signals)])
             self._data = []
-            for ts in signals:
+            for ts in self._get_signals(X):
                 for window in self.windows_:
                     self.sax.window = window
                     self._data.append(self.sax.transform(ts))
@@ -94,25 +96,34 @@ class PetsTransformer(BaseTransformer):
 
         it = zip(self._data, self.windows_, self.patterns_)
         for (discrete, labels), window, patterns in it:
+            # Col contains all columns that correspond to patterns mined with window
             col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
             for pat_idx, pattern in enumerate(patterns):
                 if X is None:
                     projection = pattern.projection
                 else:
                     projection = self.miner.project(discrete, pattern)
-                matches = np.array(sorted(projection))
-                if len(matches) > 0:
-                    ts_indices = np.array([labels[idx] for idx in matches])
+                if len(projection) > 0:
+                    # Sum the number of windows in each time series where pattern occurs
+                    ts_indices = np.array([labels[idx] for idx in projection])
                     np.add.at(col, (ts_indices, pat_idx), 1)
+
+                # PETSC-soft allows approximate matching of patterns
                 if self.soft:
                     for window_idx, window in enumerate(discrete):
                         ts_idx = labels[window_idx]
-                        if window_idx not in pattern.projection:
+
+                        # Only check for approximate match if there was no exact match
+                        if window_idx not in projection:
                             col[ts_idx][pat_idx] += self._find(window, pattern.pattern)
             embedding.append(col)
 
         embedding = np.concatenate(embedding, axis=1)
         return embedding
+
+    def _get_signals(self, X):
+        """Split X into list of separate multivariate signals."""
+        return cycle([[x[signal] for x in X] for signal in range(X[0].shape[0])])
 
     def _find(self, window, pattern):
         max_dist = (self.tau * len(pattern)) ** 2
