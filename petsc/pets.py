@@ -114,19 +114,6 @@ class PetsTransformer(BaseTransformer):
         embedding = np.concatenate(embedding, axis=1)
         return embedding
 
-    def _embed(self, discrete, labels, patterns):
-        embedding = np.zeros((len(set(labels)), len(patterns)), dtype=int)
-        for pat_idx, pattern in enumerate(patterns):
-            projection = self.miner.project(discrete, pattern)
-            for window_idx, window in enumerate(discrete):
-                ts_idx = labels[window_idx]
-                if window_idx in projection:
-                    embedding[ts_idx][pat_idx] += 1
-                elif self.soft:
-                    embedding[ts_idx][pat_idx] += self._find(window, pattern.pattern)
-
-        return embedding
-
     def _find(self, window, pattern):
         max_dist = (self.tau * len(pattern)) ** 2
         for i in range(len(window) - len(pattern) + 1):
