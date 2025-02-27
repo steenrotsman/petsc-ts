@@ -4,7 +4,7 @@ import numpy as np
 from aeon.classification import BaseClassifier
 from numpy.lib.stride_tricks import sliding_window_view
 from sax_ts import sax
-from sklearn.linear_model import RidgeClassifierCV
+from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -93,7 +93,9 @@ class PetsClassifier(BaseClassifier):
         )
 
         self._scaler = StandardScaler()
-        self._estimator = RidgeClassifierCV()
+        self._estimator = SGDClassifier(
+            max_iter=1000, tol=1e-3, penalty="elasticnet", loss="log_loss"
+        )
 
         self.pipeline_ = make_pipeline(
             self._transformer,
