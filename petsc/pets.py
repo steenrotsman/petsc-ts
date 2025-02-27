@@ -49,29 +49,11 @@ class PetsTransformer(BaseTransformer):
 
         self.patterns_ = []
         self.windows_ = []
-        self.data_ = []
+        self._data = []
 
     def fit_transform(self, X, y=None):
         self.fit(X)
-
-        embedding = []
-
-        it = zip(self.data_, self.windows_, self.patterns_)
-        for (discrete, labels), window, patterns in it:
-            col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
-            for pat_idx, pattern in enumerate(patterns):
-                matches = np.array(sorted(pattern.projection))
-                ts_indices = np.array([labels[idx] for idx in matches])
-                np.add.at(col, (ts_indices, pat_idx), 1)
-                if self.soft:
-                    for window_idx, window in enumerate(discrete):
-                        ts_idx = labels[window_idx]
-                        if window_idx not in pattern.projection:
-                            col[ts_idx][pat_idx] += self._find(window, pattern.pattern)
-            embedding.append(col)
-
-        embedding = np.concatenate(embedding, axis=1)
-        return embedding
+        return self._transform()
 
     def fit(self, X, y=None):
         # Mine each multivariate signal separately
@@ -83,7 +65,7 @@ class PetsTransformer(BaseTransformer):
                 self.sax.window = min(row.shape[1] for row in X)
             while True:
                 discrete, labels = self.sax.transform(ts)
-                self.data_.append((discrete, labels))
+                self._data.append((discrete, labels))
                 patterns = self.miner.mine(discrete)
                 self.patterns_.append(patterns)
                 self.windows_.append(self.sax.window)
@@ -96,16 +78,28 @@ class PetsTransformer(BaseTransformer):
         return self
 
     def transform(self, X):
+        return self._transform(X)
+
+    def _transform(self, X=None):
+        if X is not None:
+            n_signals = X[0].shape[0]
+            signals = cycle([[x[signal] for x in X] for signal in range(n_signals)])
+            self._data = []
+            for ts in signals:
+                for window in self.windows_:
+                    self.sax.window = window
+                    self._data.append(self.sax.transform(ts))
+
         embedding = []
-        n_signals = X[0].shape[0]
-        signals = cycle([[x[signal] for x in X] for signal in range(n_signals)])
-        it = zip(signals, self.windows_, self.patterns_)
-        for ts, window, patterns in it:
-            self.sax.window = window
-            discrete, labels = self.sax.transform(ts)
+
+        it = zip(self._data, self.windows_, self.patterns_)
+        for (discrete, labels), window, patterns in it:
             col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
             for pat_idx, pattern in enumerate(patterns):
-                projection = self.miner.project(discrete, pattern)
+                if X is None:
+                    projection = pattern.projection
+                else:
+                    projection = self.miner.project(discrete, pattern)
                 matches = np.array(sorted(projection))
                 if len(matches) > 0:
                     ts_indices = np.array([labels[idx] for idx in matches])
@@ -113,7 +107,7 @@ class PetsTransformer(BaseTransformer):
                 if self.soft:
                     for window_idx, window in enumerate(discrete):
                         ts_idx = labels[window_idx]
-                        if window_idx not in projection:
+                        if window_idx not in pattern.projection:
                             col[ts_idx][pat_idx] += self._find(window, pattern.pattern)
             embedding.append(col)
 
