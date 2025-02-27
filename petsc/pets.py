@@ -94,7 +94,7 @@ class PetsTransformer(BaseTransformer):
 
         embedding = []
 
-        it = zip(self._data, self.windows_, self.patterns_)
+        it = zip(cycle(self._data), self.windows_, self.patterns_)
         for (discrete, labels), window, patterns in it:
             # Col contains all columns that correspond to patterns mined with window
             col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
@@ -123,7 +123,7 @@ class PetsTransformer(BaseTransformer):
 
     def _get_signals(self, X):
         """Split X into list of separate multivariate signals."""
-        return cycle([[x[signal] for x in X] for signal in range(X[0].shape[0])])
+        return [[x[signal] for x in X] for signal in range(X[0].shape[0])]
 
     def _find(self, window, pattern):
         max_dist = (self.tau * len(pattern)) ** 2
