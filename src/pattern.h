@@ -14,7 +14,7 @@ public:
   double coef;
 
   Pattern(std::vector<int> pattern, Projection projection,
-          Candidates candidates);
+          Candidates candidates, int support);
   bool operator<(const Pattern &other) const;
   bool operator>(const Pattern &other) const;
 };

@@ -1,10 +1,9 @@
 #include "pattern.h"
 
 Pattern::Pattern(std::vector<int> pattern, Projection projection,
-                 Candidates candidates)
+                 Candidates candidates, int support)
     : pattern(std::move(pattern)), projection(std::move(projection)),
-      candidates(std::move(candidates)) {
-  support = static_cast<int>(projection.size());
+      candidates(std::move(candidates)), support(support) {
   coef = 0.0;
 }
 

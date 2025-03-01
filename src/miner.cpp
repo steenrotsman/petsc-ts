@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <queue>
+#include <utility>
 #include <vector>
 
 #include "miner.h"
@@ -21,7 +22,7 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
   n = 0;
   patterns = std::priority_queue<Pattern, std::vector<Pattern>,
                                  std::greater<Pattern>>();
-  queue = std::priority_queue<Pattern>();
+  queue = std::priority_queue<Pattern, std::vector<Pattern>, queue_order>();
 
   // Initializes queue with singletons
   mine_singletons(ts);
@@ -36,14 +37,14 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
       for (int item : pattern.candidates) {
         std::vector<int> candidate = pattern.pattern;
         candidate.push_back(item);
-        auto projection = compute_projection_incremental(ts, pattern, item);
+        auto [projection, support] =
+            compute_projection_incremental(ts, pattern, item);
 
         // Don't add candidate to queue if its support is lower than kth
         // patttern
-        if (n < k ||
-            static_cast<int>(projection.size()) > patterns.top().support) {
+        if (n < k || support > patterns.top().support) {
           auto candidates = get_candidates(ts, projection, candidate);
-          queue.emplace(candidate, projection, candidates);
+          queue.emplace(candidate, projection, candidates, support);
         }
       }
     }
@@ -78,19 +79,40 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
 }
 
 Projection PatternMiner::project(DiscreteDB &ts, Pattern pattern) {
-  int item = pattern.pattern[0];
-  Projection projection = compute_projection_singleton(ts, item);
-  Candidates candidates = get_candidates(ts, projection, {item});
-  Pattern current_pattern = Pattern({item}, projection, candidates);
+  Projection projection;
+  int pattern_size = pattern.pattern.size();
+  int current_max_size = static_cast<int>(pattern_size * duration);
+  int current_max_gaps = current_max_size - static_cast<int>(pattern_size);
+  for (int i = 0; i < ts.size(); ++i) {
+    int gaps = 0;
+    int symbol = 0;
+    int start = 0;
 
-  for (size_t i = 1; i < pattern.pattern.size(); ++i) {
-    int next_item = pattern.pattern[i];
-    auto p = compute_projection_incremental(ts, current_pattern, next_item);
-    current_pattern.projection = p;
-    current_pattern.pattern.push_back(next_item);
+    for (int j = 0; j < ts[i].size(); ++j) {
+      // Current window item matches wanted symbol
+      if (ts[i][j] == pattern.pattern[symbol]) {
+        // First window item that matches symbol marks start of pattern
+        if (symbol == 0) {
+          start = j;
+        }
+        ++symbol;
+
+        // Last window item that matches symbol marks end of pattern
+        if (symbol == pattern_size) {
+          projection[i] = {start, j + 1};
+          break;
+        }
+
+      } else if (start < j) { // Gaps cannot occur before start of pattern
+        ++gaps;
+        if (gaps > current_max_gaps) {
+          break;
+        }
+      }
+    }
   }
 
-  return current_pattern.projection;
+  return projection;
 }
 
 // --- Private Methods ---
@@ -100,7 +122,7 @@ void PatternMiner::mine_singletons(DiscreteDB &ts) {
     std::vector<int> pattern = {item};
     auto projection = compute_projection_singleton(ts, item);
     auto candidates = get_candidates(ts, projection, pattern);
-    queue.emplace(pattern, projection, candidates);
+    queue.emplace(pattern, projection, candidates, projection.size());
   }
 }
 
@@ -118,26 +140,33 @@ Projection PatternMiner::compute_projection_singleton(DiscreteDB &ts,
   return projection;
 }
 
-Projection PatternMiner::compute_projection_incremental(DiscreteDB &ts,
-                                                        const Pattern &pattern,
-                                                        int item) {
-  Projection p;
+std::pair<Projection, int>
+PatternMiner::compute_projection_incremental(DiscreteDB &ts,
+                                             const Pattern &pattern, int item) {
+  Projection projection;
+  int support;
   for (const auto &[ts_idx, range] : pattern.projection) {
     int start = range.first, end = range.second;
     int current_max_size = start + max_duration;
-    int current_gaps = (end - start) - pattern.pattern.size();
+    int current_max_gaps =
+        static_cast<int>((pattern.pattern.size()) * (duration - 1));
+    int current_gaps = end - start - pattern.pattern.size();
     int remaining_gaps = max_gaps - current_gaps;
     int stop = std::min({static_cast<int>(ts[ts_idx].size()), current_max_size,
                          end + remaining_gaps + 1});
 
     for (int j = end; j < stop; ++j) {
       if (ts[ts_idx][j] == item) {
-        p[ts_idx] = {start, j + 1};
+        projection[ts_idx] = {start, j + 1};
+        if ((j - start - pattern.pattern.size()) < current_max_gaps) {
+          ++support;
+        }
         break;
       }
     }
   }
-  return p;
+  std::pair<Projection, int> result{projection, support};
+  return result;
 }
 
 Candidates PatternMiner::get_candidates(DiscreteDB &ts,
