@@ -5,18 +5,18 @@
 
 #include "typing.h"
 
-class Pattern
-{
+class Pattern {
 public:
-    std::vector<int> pattern;
-    Projection projection;
-    Candidates candidates;
-    int support;
-    double coef;
+  std::vector<int> pattern;
+  Projection projection;
+  Candidates candidates;
+  int support;
+  double coef;
 
-    Pattern(std::vector<int> pattern, Projection projection, Candidates candidates, int support);
-    bool operator<(const Pattern &other) const;
-    bool operator>(const Pattern &other) const;
+  Pattern(std::vector<int> pattern, Projection projection,
+          Candidates candidates, int support);
+  bool operator<(const Pattern &other) const;
+  bool operator>(const Pattern &other) const;
 };
 
 #endif
