@@ -79,22 +79,40 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
 }
 
 Projection PatternMiner::project(DiscreteDB &ts, Pattern pattern) {
-  int item = pattern.pattern[0];
-  Projection projection = compute_projection_singleton(ts, item);
-  Candidates candidates = get_candidates(ts, projection, {item});
-  Pattern current_pattern = Pattern({item}, projection, candidates,
-                                    static_cast<int>(projection.size()));
+  Projection projection;
+  int pattern_size = pattern.pattern.size();
+  int current_max_size = static_cast<int>(pattern_size * duration);
+  int current_max_gaps = current_max_size - static_cast<int>(pattern_size);
+  for (int i = 0; i < ts.size(); ++i) {
+    int gaps = 0;
+    int symbol = 0;
+    int start = 0;
 
-  for (size_t i = 1; i < pattern.pattern.size(); ++i) {
-    int next_item = pattern.pattern[i];
-    auto [projection, support] =
-        compute_projection_incremental(ts, current_pattern, next_item);
-    current_pattern.projection = projection;
-    current_pattern.support = support;
-    current_pattern.pattern.push_back(next_item);
+    for (int j = 0; j < ts[i].size(); ++j) {
+      // Current window item matches wanted symbol
+      if (ts[i][j] == pattern.pattern[symbol]) {
+        // First window item that matches symbol marks start of pattern
+        if (symbol == 0) {
+          start = j;
+        }
+        ++symbol;
+
+        // Last window item that matches symbol marks end of pattern
+        if (symbol == pattern_size) {
+          projection[i] = {start, j + 1};
+          break;
+        }
+
+      } else if (start < j) { // Gaps cannot occur before start of pattern
+        ++gaps;
+        if (gaps > current_max_gaps) {
+          break;
+        }
+      }
+    }
   }
 
-  return current_pattern.projection;
+  return projection;
 }
 
 // --- Private Methods ---
