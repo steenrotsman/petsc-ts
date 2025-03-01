@@ -13,6 +13,11 @@ struct queue_order {
   }
 };
 
+using TopKPatterns =
+    std::priority_queue<Pattern, std::vector<Pattern>, std::greater<Pattern>>;
+using PatternQueue =
+    std::priority_queue<Pattern, std::vector<Pattern>, queue_order>;
+
 class PatternMiner {
 public:
   PatternMiner(int alpha, int min_size, int max_size, double duration, int k,
@@ -30,15 +35,13 @@ private:
   int n;
   int max_duration;
   int max_gaps;
-  std::priority_queue<Pattern, std::vector<Pattern>, std::greater<Pattern>>
-      patterns;
-  std::priority_queue<Pattern, std::vector<Pattern>, queue_order> queue;
+  TopKPatterns patterns;
+  PatternQueue queue;
 
   void mine_singletons(DiscreteDB &ts);
-  Projection compute_projection_singleton(DiscreteDB &ts, int item);
+  Projection project_item(DiscreteDB &ts, int item);
   std::pair<Projection, int>
-  compute_projection_incremental(DiscreteDB &ts, const Pattern &pattern,
-                                 int item);
+  project_incremental(DiscreteDB &ts, const Pattern &pattern, int item);
   Candidates get_candidates(DiscreteDB &ts, const Projection &projection,
                             const std::vector<int> &pattern);
 };

@@ -20,9 +20,8 @@ PatternMiner::PatternMiner(int alpha, int min_size, int max_size,
 std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
   // Reset from previous calls
   n = 0;
-  patterns = std::priority_queue<Pattern, std::vector<Pattern>,
-                                 std::greater<Pattern>>();
-  queue = std::priority_queue<Pattern, std::vector<Pattern>, queue_order>();
+  patterns = TopKPatterns();
+  queue = PatternQueue();
 
   // Initializes queue with singletons
   mine_singletons(ts);
@@ -37,8 +36,7 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
       for (int item : pattern.candidates) {
         std::vector<int> candidate = pattern.pattern;
         candidate.push_back(item);
-        auto [projection, support] =
-            compute_projection_incremental(ts, pattern, item);
+        auto [projection, support] = project_incremental(ts, pattern, item);
 
         // Don't add candidate to queue if its support is lower than kth
         // patttern
@@ -120,14 +118,13 @@ void PatternMiner::mine_singletons(DiscreteDB &ts) {
   // Assume that every sax symbol occurs at least once
   for (int item = 0; item < alpha; ++item) {
     std::vector<int> pattern = {item};
-    auto projection = compute_projection_singleton(ts, item);
+    auto projection = project_item(ts, item);
     auto candidates = get_candidates(ts, projection, pattern);
     queue.emplace(pattern, projection, candidates, projection.size());
   }
 }
 
-Projection PatternMiner::compute_projection_singleton(DiscreteDB &ts,
-                                                      int item) {
+Projection PatternMiner::project_item(DiscreteDB &ts, int item) {
   Projection projection;
   for (size_t ts_idx = 0; ts_idx < ts.size(); ++ts_idx) {
     for (size_t j = 0; j + min_size <= ts[ts_idx].size(); ++j) {
@@ -141,8 +138,8 @@ Projection PatternMiner::compute_projection_singleton(DiscreteDB &ts,
 }
 
 std::pair<Projection, int>
-PatternMiner::compute_projection_incremental(DiscreteDB &ts,
-                                             const Pattern &pattern, int item) {
+PatternMiner::project_incremental(DiscreteDB &ts, const Pattern &pattern,
+                                  int item) {
   Projection projection;
   int support;
   for (const auto &[ts_idx, range] : pattern.projection) {
