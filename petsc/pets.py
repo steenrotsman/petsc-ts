@@ -101,6 +101,8 @@ class PetsTransformer(BaseTransformer):
             for pat_idx, pattern in enumerate(patterns):
                 if X is None:
                     projection = pattern.projection
+                elif self.soft:
+                    projection = self.miner.project_soft(discrete, pattern, self.tau)
                 else:
                     projection = self.miner.project(discrete, pattern)
                 if len(projection) > 0:
@@ -108,14 +110,6 @@ class PetsTransformer(BaseTransformer):
                     ts_indices = np.array([labels[idx] for idx in projection])
                     np.add.at(col, (ts_indices, pat_idx), 1)
 
-                # PETSC-soft allows approximate matching of patterns
-                if self.soft:
-                    for window_idx, window in enumerate(discrete):
-                        ts_idx = labels[window_idx]
-
-                        # Only check for approximate match if there was no exact match
-                        if window_idx not in projection:
-                            col[ts_idx][pat_idx] += self._find(window, pattern.pattern)
             embedding.append(col)
 
         embedding = np.concatenate(embedding, axis=1)
@@ -124,15 +118,3 @@ class PetsTransformer(BaseTransformer):
     def _get_signals(self, X):
         """Split X into list of separate multivariate signals."""
         return [[x[signal] for x in X] for signal in range(X[0].shape[0])]
-
-    def _find(self, window, pattern):
-        max_dist = (self.tau * len(pattern)) ** 2
-        for i in range(len(window) - len(pattern) + 1):
-            dist = 0
-            for j in range(len(pattern)):
-                dist += (window[i + j] - pattern[j]) ** 2
-                if dist > max_dist:
-                    break
-            if dist < max_dist:
-                return 1
-        return 0

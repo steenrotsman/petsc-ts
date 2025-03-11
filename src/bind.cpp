@@ -34,5 +34,6 @@ PYBIND11_MODULE(petsc_miner, m) {
            py::arg("min_size"), py::arg("max_size"), py::arg("duration"),
            py::arg("k"), py::arg("sort_alpha"))
       .def("mine", &PatternMiner::mine)
-      .def("project", &PatternMiner::project);
+      .def("project", &PatternMiner::project)
+      .def("project_soft", &PatternMiner::project_soft);
 }

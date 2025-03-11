@@ -23,7 +23,8 @@ public:
   PatternMiner(int alpha, int min_size, int max_size, double duration, int k,
                bool sort_alpha);
   std::vector<Pattern> mine(DiscreteDB &ts);
-  Projection project(DiscreteDB &ts, Pattern pattern);
+  Projection project(DiscreteDB &ts, const Pattern &pattern);
+  Projection project_soft(DiscreteDB &ts, const Pattern &pattern, double tau);
 
 private:
   int alpha;

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <queue>
 #include <utility>
 #include <vector>
@@ -76,7 +77,7 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
   return result;
 }
 
-Projection PatternMiner::project(DiscreteDB &ts, Pattern pattern) {
+Projection PatternMiner::project(DiscreteDB &ts, const Pattern &pattern) {
   Projection projection;
   int pattern_size = pattern.pattern.size();
   int current_max_size = static_cast<int>(pattern_size * duration);
@@ -106,6 +107,38 @@ Projection PatternMiner::project(DiscreteDB &ts, Pattern pattern) {
         if (gaps > current_max_gaps) {
           break;
         }
+      }
+    }
+  }
+
+  return projection;
+}
+
+Projection PatternMiner::project_soft(DiscreteDB &ts, const Pattern &pattern,
+                                      double tau) {
+  Projection projection;
+  int pattern_size = pattern.pattern.size();
+  double max_dist = pow(tau * pattern_size, 2);
+
+  // Loop over windows
+  for (int ts_idx = 0; ts_idx < ts.size(); ++ts_idx) {
+    // Loop over potential window starting positions
+    for (int start = 0; start < ts[ts_idx].size() - pattern_size; ++start) {
+      double dist = 0;
+      // Try to match pattern to this starting position
+      for (int symbol = 0; symbol < pattern_size; ++symbol) {
+        dist += pow(ts[ts_idx][start + symbol] - pattern.pattern[symbol], 2);
+
+        // First symbols already exceed max_dist
+        if (dist > max_dist) {
+          break;
+        }
+      }
+
+      // Match found; add to projection and stop looking in this window
+      if (dist < max_dist) {
+        projection[ts_idx] = {start, start + pattern_size};
+        break;
       }
     }
   }
