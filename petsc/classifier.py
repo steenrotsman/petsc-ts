@@ -12,7 +12,61 @@ from .pets import PetsTransformer
 
 
 class PetsClassifier(BaseClassifier):
-    """PETSC: Pattern-based Embedding for Time Series Classification."""
+    """PETSC: Pattern-based Embedding for Time Series Classification.
+
+    Extract frequent sequential patterns from discretised time series, turn counts of
+    pattern occurrences into a tabular embedding and train a linear classifier.
+
+    Vanilla PETSC, MR-PETSC and PETSC-SOFT are supported.
+
+    Parameters
+    ----------
+    w : int, default=15
+        Length of SAX words.
+    alpha : int, default=4
+        Alphabet size of SAX words.
+    window : int, default=15
+        Length of sliding window for SAX transformation.
+    stride : int, default=1
+        Stride of sliding window for SAX transformation.
+    min_size : int, default=5
+        Minimum length of frequent sequential pattern, cannot be larger than w.
+    max_size : int, optional
+        Maximum length of frequent sequential pattern, default to w.
+    duration : float, default=1.1
+        Maximum relative duration of frequent sequential patterns. Frequent sequential
+        patterns are allowed (duration - 1) * pattern_length gaps in occurrences.
+    k : int, default=200
+        Number of top frequent sequential patterns to mine.
+    sort_alpha : bool, default=False
+        Sort patterns alphabetically, affects embedding column ordering.
+    multiresolution : bool, default=False
+        Use MR-PETSC: start with window at minimum time series length and combine top k
+        frequent sequential patterns of all windows longer than w.
+    soft : bool, default=False
+        Use PETSC-SOFT: allow some deviations in patterns when finding occurrences.
+    tau : float, optional
+        Control the amoung of deviation allowed for PETSC-SOFT, default to 1/(2*alpha).
+    class_weight{“balanced”, “balanced_subsample”}, dict or list of dicts, default=None
+        From sklearn documentation:
+        If not given, all classes are supposed to have weight one.
+        The “balanced” mode uses the values of y to automatically adjust weights
+        inversely proportional to class frequencies in the input data as
+        n_samples / (n_classes * np.bincount(y))
+        The “balanced_subsample” mode is the same as “balanced” except that weights
+        are computed based on the bootstrap sample for every tree grown.
+        For multi-output, the weights of each column of y will be multiplied.
+        Note that these weights will be multiplied with sample_weight (passed through
+        the fit method) if sample_weight is specified.
+    n_jobs : int, default=1
+        The number of jobs to run in parallel for both `fit` and `predict`.
+        ``-1`` means using all processors.
+    random_state : int, RandomState instance or None, default=None
+        If `int`, random_state is the seed used by the random number generator;
+        If `RandomState` instance, random_state is the random number generator;
+        If `None`, the random number generator is the `RandomState` instance used
+        by `np.random`.
+    """
 
     _tags = {
         "X_inner_type": ["numpy3D", "np-list"],
@@ -65,23 +119,6 @@ class PetsClassifier(BaseClassifier):
         super().__init__()
 
     def _fit(self, X, y):
-        """Fit PETSC to training data.
-
-        Parameters
-        ----------
-        X : 3D np.ndarray (any number of channels, equal length series)
-                of shape (n_cases, n_channels, n_timepoints)
-            or list of numpy arrays (any number of channels, unequal length series)
-                of shape [n_cases], 2D np.array (n_channels, n_timepoints_i), where
-                n_timepoints_i is length of series i
-        y : 1D np.array, of shape [n_cases] - class labels for fitting
-            indices correspond to instance indices in X
-
-        Returns
-        -------
-        self :
-            Reference to self.
-        """
         self._transformer = PetsTransformer(
             self.window,
             self.stride,
@@ -118,33 +155,9 @@ class PetsClassifier(BaseClassifier):
         return self
 
     def _predict(self, X) -> np.ndarray:
-        """Predicts labels for sequences in X.
-
-        Parameters
-        ----------
-        X : 3D np.ndarray of shape = (n_cases, n_channels, n_timepoints)
-            The data to make predictions for.
-
-        Returns
-        -------
-        y : array-like, shape = (n_cases,)
-            Predicted class labels.
-        """
         return self.pipeline_.predict(X)
 
     def _predict_proba(self, X) -> np.ndarray:
-        """Predicts labels probabilities for sequences in X.
-
-        Parameters
-        ----------
-        X : 3D np.ndarray of shape = (n_cases, n_channels, n_timepoints)
-            The data to make predict probabilities for.
-
-        Returns
-        -------
-        y : array-like, shape = (n_cases, n_classes_)
-            Predicted probabilities using the ordering in classes_.
-        """
         return self.pipeline_.predict_proba(X)
 
     def get_attribution(self, x, reference=None) -> np.ndarray:
