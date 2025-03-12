@@ -26,7 +26,7 @@ class PetsClassifier(BaseClassifier):
         self,
         w=15,
         alpha=4,
-        window=None,
+        window=15,
         stride=1,
         min_size=5,
         max_size=None,
@@ -36,11 +36,8 @@ class PetsClassifier(BaseClassifier):
         multiresolution=False,
         soft=False,
         tau=None,
-    ):
-        if window is None and not multiresolution:
-            raise ValueError("window must be set if multiresolution = False")
-        if window is not None and min_size > window:
-            raise ValueError("min_size cannot be larger than window.")
+        if min_size > w:
+            raise ValueError("min_size cannot be larger than w.")
         if duration > 1 and soft:
             raise ValueError("soft = True requires duration = 1.0")
 
