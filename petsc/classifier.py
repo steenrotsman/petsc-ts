@@ -133,7 +133,7 @@ class PetsClassifier(BaseClassifier):
         """
         return self.pipeline_.predict_proba(X)
 
-    def get_attribution(self, x, reference=None):
+    def get_attribution(self, x, reference=None) -> np.ndarray:
         """Get classification attribution of one row.
 
         Parameters
