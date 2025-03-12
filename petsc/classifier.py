@@ -36,6 +36,10 @@ class PetsClassifier(BaseClassifier):
         multiresolution=False,
         soft=False,
         tau=None,
+        class_weight=None,
+        n_jobs=1,
+        random_state=None,
+    ):
         if min_size > w:
             raise ValueError("min_size cannot be larger than w.")
         if duration > 1 and soft:
@@ -53,6 +57,10 @@ class PetsClassifier(BaseClassifier):
         self.multiresolution = multiresolution
         self.soft = soft
         self.tau = tau
+
+        self.class_weight = class_weight
+        self.n_jobs = n_jobs
+        self.random_state = random_state
 
         super().__init__()
 
@@ -91,7 +99,13 @@ class PetsClassifier(BaseClassifier):
 
         self._scaler = StandardScaler()
         self._estimator = SGDClassifier(
-            max_iter=1000, tol=1e-3, penalty="elasticnet", loss="log_loss"
+            max_iter=1000,
+            tol=1e-3,
+            penalty="elasticnet",
+            loss="log_loss",
+            class_weight=self.class_weight,
+            n_jobs=self.n_jobs,
+            random_state=self.random_state,
         )
 
         self.pipeline_ = make_pipeline(
