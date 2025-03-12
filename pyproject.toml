@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "petsc"
-version = "1.0"
+version = "0.1"
 authors = [
     {name = "Len Feremans", email = "len.feremans@gmail.com"},
 ]
@@ -20,7 +20,7 @@ dependencies = [
     "numpy",
     "scikit-learn",
     "aeon",
-    "sax-ts @ git+https://github.com/steenrotsman/sax-ts.git",
+    "sax-ts",
 ]
 
 [tool.setuptools.packages.find]
