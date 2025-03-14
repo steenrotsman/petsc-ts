@@ -33,4 +33,4 @@ include = ["petsc_ts"]
 [tool.cibuildwheel]
 test-command = "pytest {project}/tests"
 test-extras = ["test"]
-skip = "pp*"
+skip = "pp* win32"
