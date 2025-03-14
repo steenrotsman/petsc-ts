@@ -1,7 +1,7 @@
 from aeon.datasets import load_gunpoint
 from sklearn.model_selection import RandomizedSearchCV
 
-from petsc.classifier import PetsClassifier
+from petsc_ts.classifier import PetsClassifier
 
 X_train, y_train = load_gunpoint(split="TRAIN")
 X_test, y_test = load_gunpoint(split="TEST")

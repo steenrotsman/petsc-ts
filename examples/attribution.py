@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from aeon.datasets import load_gunpoint
 
-from petsc.classifier import PetsClassifier
+from petsc_ts.classifier import PetsClassifier
 
 
 def main():

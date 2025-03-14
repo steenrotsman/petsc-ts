@@ -3,8 +3,8 @@ requires = ["setuptools>=42", "pybind11>=2.10.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "petsc"
-version = "1.0"
+name = "petsc_ts"
+version = "0.1"
 authors = [
     {name = "Len Feremans", email = "len.feremans@gmail.com"},
 ]
@@ -13,15 +13,24 @@ maintainers = [
 ]
 description = "Pattern-based Embedding for Time Series Classification"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9, <3.13"
 license = {text = "MIT"}
 
 dependencies = [
     "numpy",
     "scikit-learn",
     "aeon",
-    "sax-ts @ git+https://github.com/steenrotsman/sax-ts.git",
+    "sax-ts",
 ]
 
+[project.optional-dependencies]
+test = ["pytest"]
+examples = ["matplotlib"]
+
 [tool.setuptools.packages.find]
-include = ["petsc"]
+include = ["petsc_ts"]
+
+[tool.cibuildwheel]
+test-command = "pytest {project}/tests"
+test-extras = ["test"]
+skip = ["pp*", "*-win32", "*-manylinux_i686", "*-musllinux*"]

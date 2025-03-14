@@ -1,8 +1,8 @@
 from itertools import cycle
 
 import numpy as np
+from _petsc_miner import PatternMiner
 from aeon.transformations.base import BaseTransformer
-from petsc_miner import PatternMiner
 
 from .preprocessing import SAX
 
