@@ -2,8 +2,7 @@ from time import perf_counter
 
 import numpy as np
 from aeon.datasets import load_from_ts_file
-
-from petsc.classifier import PetsClassifier
+from petsc_ts.classifier import PetsClassifier
 
 NAME = "ArticularyWordRecognition"
 PATH = "examples/data/multivariate/ArticularyWordRecognition/"

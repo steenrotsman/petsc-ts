@@ -17,7 +17,7 @@ pip install "petsc-ts[test]"
 
 You can then import the `PetsClassifier` class as follows and use it as any other `scikit-learn`-compatible estimator:
 ```Python
-from petsc.classifier import PetsClassifier
+from petsc_ts.classifier import PetsClassifier
 
 clsf = PetsClassifier()
 clsf.fit(X_train, y_train)

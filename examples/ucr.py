@@ -3,8 +3,7 @@ from time import perf_counter
 
 import numpy as np
 from aeon.datasets import load_classification
-
-from petsc.classifier import PetsClassifier
+from petsc_ts.classifier import PetsClassifier
 
 NAMES = ["Beef", "GunPoint"]
 PATH = "examples/data/UCRArchive_2018"
