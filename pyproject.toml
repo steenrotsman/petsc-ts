@@ -23,5 +23,9 @@ dependencies = [
     "sax-ts",
 ]
 
+[project.optional-dependencies]
+test = ["pytest"]
+examples = ["matplotlib"]
+
 [tool.setuptools.packages.find]
 include = ["petsc_ts"]
