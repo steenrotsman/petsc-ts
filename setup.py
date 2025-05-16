@@ -8,6 +8,7 @@ ext_modules = [
         "_petsc_miner",
         ["src/bind.cpp", "src/miner.cpp", "src/pattern.cpp"],
         define_macros=[("VERSION_INFO", __version__)],
+        extra_compile_args=["-Wall"],
     ),
 ]
 

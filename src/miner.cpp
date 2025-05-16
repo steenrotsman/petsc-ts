@@ -149,7 +149,7 @@ Projection PatternMiner::project_soft(DiscreteDB &ts, const Pattern &pattern,
 // --- Private Methods ---
 void PatternMiner::mine_singletons(DiscreteDB &ts) {
   // Assume that every sax symbol occurs at least once
-  for (int item = 0; item < alpha; ++item) {
+  for (char item = 'a'; item < 'a' + alpha; ++item) {
     Word pattern = {item};
     auto projection = project_item(ts, item);
     auto candidates = get_candidates(ts, projection, pattern);

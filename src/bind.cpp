@@ -17,16 +17,11 @@ PYBIND11_MODULE(_petsc_miner, m) {
       .def_readwrite("candidates", &Pattern::candidates)
       .def_readwrite("support", &Pattern::support)
       .def_readwrite("coef", &Pattern::coef)
-      .def("__repr__", [](Pattern &m) {
-        std::string s = "Pattern([";
-        for (size_t i = 0; i < m.pattern.size(); ++i) {
-          s += std::to_string(m.pattern[i]);
-          if (i < m.pattern.size() - 1) {
-            s += ", ";
-          }
-        }
-        s += "])";
-        return s;
+      .def("__repr__", [](Pattern &pattern) {
+        std::string s;
+        for (auto c : pattern.pattern)
+          s += c;
+        return "Pattern('" + s + "')";
       });
 
   py::class_<PatternMiner>(m, "PatternMiner")
