@@ -44,7 +44,7 @@ private:
   std::pair<Projection, int>
   project_incremental(DiscreteDB &ts, const Pattern &pattern, int item);
   Candidates get_candidates(DiscreteDB &ts, const Projection &projection,
-                            const std::vector<int> &pattern);
+                            const Word &pattern);
 };
 
 #endif

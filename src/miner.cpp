@@ -35,7 +35,7 @@ std::vector<Pattern> PatternMiner::mine(DiscreteDB &ts) {
     // Only generate candidates if they are short enough
     if (pattern.pattern.size() < static_cast<size_t>(max_size)) {
       for (int item : pattern.candidates) {
-        std::vector<int> candidate = pattern.pattern;
+        Word candidate = pattern.pattern;
         candidate.push_back(item);
         auto [projection, support] = project_incremental(ts, pattern, item);
 
@@ -150,7 +150,7 @@ Projection PatternMiner::project_soft(DiscreteDB &ts, const Pattern &pattern,
 void PatternMiner::mine_singletons(DiscreteDB &ts) {
   // Assume that every sax symbol occurs at least once
   for (int item = 0; item < alpha; ++item) {
-    std::vector<int> pattern = {item};
+    Word pattern = {item};
     auto projection = project_item(ts, item);
     auto candidates = get_candidates(ts, projection, pattern);
     queue.emplace(pattern, projection, candidates, projection.size());
@@ -201,7 +201,7 @@ PatternMiner::project_incremental(DiscreteDB &ts, const Pattern &pattern,
 
 Candidates PatternMiner::get_candidates(DiscreteDB &ts,
                                         const Projection &projection,
-                                        const std::vector<int> &pattern) {
+                                        const Word &pattern) {
   Candidates candidates;
   for (const auto &[ts_idx, range] : projection) {
     if (candidates.size() == static_cast<size_t>(alpha))

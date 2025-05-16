@@ -5,8 +5,8 @@
 #include <unordered_set>
 #include <vector>
 
-using DiscreteDB = const std::vector<std::vector<int>>;
+using Word = std::vector<int>;
+using DiscreteDB = const std::vector<Word>;
 using Projection = std::unordered_map<int, std::pair<int, int>>;
 using Candidates = std::unordered_set<int>;
-
 #endif

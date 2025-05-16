@@ -9,7 +9,7 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(_petsc_miner, m) {
   py::class_<Pattern>(m, "Pattern")
-      .def(py::init<std::vector<int>, Projection, Candidates, int>(),
+      .def(py::init<Word, Projection, Candidates, int>(),
            py::arg("pattern"), py::arg("projection"), py::arg("candidates"),
            py::arg("support"))
       .def_readwrite("pattern", &Pattern::pattern)
