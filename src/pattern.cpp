@@ -1,6 +1,6 @@
 #include "pattern.h"
 
-Pattern::Pattern(std::vector<int> pattern, Projection projection,
+Pattern::Pattern(Word pattern, Projection projection,
                  Candidates candidates, int support)
     : pattern(std::move(pattern)), projection(std::move(projection)),
       candidates(std::move(candidates)), support(support) {

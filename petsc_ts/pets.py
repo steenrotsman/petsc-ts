@@ -84,7 +84,7 @@ class PetsTransformer(BaseTransformer):
         return self._transform(X)
 
     def _transform(self, X=None):
-        # Caller is fit_transform; _data is already filled, else preprocess new data
+        # Caller is transform; if caller is fit_transform, _data is already filled
         if X is not None:
             self._data = []
             for ts in self._get_signals(X):
