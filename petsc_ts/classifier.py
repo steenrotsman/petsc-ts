@@ -93,6 +93,7 @@ class PetsClassifier(BaseClassifier):
         class_weight=None,
         n_jobs=1,
         random_state=None,
+        verbosity=0,
     ):
         if min_size > w:
             raise ValueError("min_size cannot be larger than w.")
@@ -111,6 +112,7 @@ class PetsClassifier(BaseClassifier):
         self.multiresolution = multiresolution
         self.soft = soft
         self.tau = tau
+        self.verbosity = verbosity
 
         self.class_weight = class_weight
         self.n_jobs = n_jobs
@@ -132,6 +134,7 @@ class PetsClassifier(BaseClassifier):
             self.multiresolution,
             self.soft,
             self.tau,
+            self.verbosity,
         )
 
         self._scaler = StandardScaler()

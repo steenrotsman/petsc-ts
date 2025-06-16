@@ -35,6 +35,7 @@ class PetsTransformer(BaseTransformer):
         multiresolution,
         soft,
         tau,
+        verbosity,
     ):
         self.min_size = min_size
         self.w = w
@@ -43,6 +44,7 @@ class PetsTransformer(BaseTransformer):
         self.multiresolution = multiresolution
         self.soft = soft
         self.tau = tau if tau is not None else 1 / (2 * alpha)
+        self.verbosity = verbosity
 
         self.sax = SAX(window, stride, w, alpha)
         self.miner = PatternMiner(alpha, min_size, max_size, duration, k, sort_alpha)
@@ -57,14 +59,21 @@ class PetsTransformer(BaseTransformer):
 
     def fit(self, X, y=None):
         # Mine each multivariate signal separately
-        for ts in self._get_signals(X):
+        for dimension, ts in enumerate(self._get_signals(X)):
             # Start with window at min ts length and reduce window each iteration
             if self.multiresolution:
                 self.sax.window = min(row.shape[1] for row in X)
 
             while True:
+                if self.verbosity >= 1:
+                    print(f"window={self.sax.window}")
+                    print(f"Dimension {dimension}: applying SAX transform...")
                 discrete, labels = self.sax.transform(ts)
+                if self.verbosity >= 1:
+                    print(f"Dimension {dimension} mining patterns...")
                 patterns = self.miner.mine(discrete)
+                if self.verbosity >= 1:
+                    print(f"Dimension {dimension}: mined {len(patterns)} patterns!")
 
                 # Store for use in _transform
                 self._data.append((discrete, labels))
