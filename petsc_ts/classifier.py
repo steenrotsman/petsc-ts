@@ -47,6 +47,8 @@ class PetsClassifier(BaseClassifier):
         Use PETSC-SOFT: allow some deviations in patterns when finding occurrences.
     tau : float, optional
         Control the amoung of deviation allowed for PETSC-SOFT, default to 1/(2*alpha).
+    cache : bool, default=True
+        Store SAX representations of training data. Requires more memory, but makes fit() more efficient.
     class_weight{“balanced”, “balanced_subsample”}, dict or list of dicts, default=None
         From sklearn documentation:
         If not given, all classes are supposed to have weight one.
@@ -90,6 +92,7 @@ class PetsClassifier(BaseClassifier):
         multiresolution=False,
         soft=False,
         tau=None,
+        cache=True,
         class_weight=None,
         n_jobs=1,
         random_state=None,
@@ -113,6 +116,7 @@ class PetsClassifier(BaseClassifier):
         self.soft = soft
         self.tau = tau
         self.verbosity = verbosity
+        self.cache = cache
 
         self.class_weight = class_weight
         self.n_jobs = n_jobs
@@ -135,6 +139,7 @@ class PetsClassifier(BaseClassifier):
             self.soft,
             self.tau,
             self.verbosity,
+            self.cache,
         )
 
         self._scaler = StandardScaler()

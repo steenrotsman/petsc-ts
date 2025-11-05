@@ -36,6 +36,7 @@ class PetsTransformer(BaseTransformer):
         soft,
         tau,
         verbosity,
+        cache,
     ):
         self.min_size = min_size
         self.w = w
@@ -45,6 +46,7 @@ class PetsTransformer(BaseTransformer):
         self.soft = soft
         self.tau = tau if tau is not None else 1 / (2 * alpha)
         self.verbosity = verbosity
+        self.cache = cache
 
         self.sax = SAX(window, stride, w, alpha)
         self.miner = PatternMiner(alpha, min_size, max_size, duration, k, sort_alpha)
@@ -52,10 +54,6 @@ class PetsTransformer(BaseTransformer):
         self.patterns_ = []
         self.windows_ = []
         self._data = []
-
-    def fit_transform(self, X, y=None):
-        self.fit(X)
-        return self._transform()
 
     def fit(self, X, y=None):
         # Mine each multivariate signal separately
@@ -75,10 +73,12 @@ class PetsTransformer(BaseTransformer):
                 if self.verbosity >= 1:
                     print(f"Dimension {dimension}: mined {len(patterns)} patterns!")
 
-                # Store for use in _transform
-                self._data.append((discrete, labels))
                 self.patterns_.append(patterns)
                 self.windows_.append(self.sax.window)
+
+                # Maybe store for use in _transform
+                if self.cache:
+                    self._data.append((discrete, labels))
 
                 # Add more patterns with halved window while window >= SAX word size
                 if self.multiresolution:
@@ -89,40 +89,48 @@ class PetsTransformer(BaseTransformer):
                     break
         return self
 
+    def fit_transform(self, X, y=None):
+        self.fit(X)
+        if self.cache:
+            return self._transform_cached()
+        return self._transform(X, train=True)
+
     def transform(self, X):
-        return self._transform(X)
+        return self._transform(X, train=False)
 
-    def _transform(self, X=None):
-        # Caller is transform; if caller is fit_transform, _data is already filled
-        if X is not None:
-            self._data = []
-            for ts in self._get_signals(X):
-                for window in self.windows_:
-                    self.sax.window = window
-                    self._data.append(self.sax.transform(ts))
-
+    def _transform_cached(self):
         embedding = []
-
-        it = zip(cycle(self._data), self.windows_, self.patterns_)
-        for (discrete, labels), window, patterns in it:
-            # Col contains all columns that correspond to patterns mined with window
-            col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
-            for pat_idx, pattern in enumerate(patterns):
-                if X is None:
-                    projection = pattern.projection
-                elif self.soft:
-                    projection = self.miner.project_soft(discrete, pattern, self.tau)
-                else:
-                    projection = self.miner.project(discrete, pattern)
-                if len(projection) > 0:
-                    # Sum the number of windows in each time series where pattern occurs
-                    ts_indices = np.array([labels[idx] for idx in projection])
-                    np.add.at(col, (ts_indices, pat_idx), 1)
-
+        for (discrete, labels), patterns in zip(self._data, self.patterns_):
+            col = self._get_col(discrete, labels, patterns, train=True)
             embedding.append(col)
-
         embedding = np.concatenate(embedding, axis=1)
         return embedding
+
+    def _transform(self, X, train):
+        embedding = []
+        it = zip(cycle(self._get_signals(X)), self.windows_, self.patterns_)
+        for ts, window, patterns in it:
+            self.sax.window = window
+            discrete, labels = self.sax.transform(ts)
+            col = self._get_col(discrete, labels, patterns, train)
+            embedding.append(col)
+        embedding = np.concatenate(embedding, axis=1)
+        return embedding
+
+    def _get_col(self, discrete, labels, patterns, train):
+        col = np.zeros((len(set(labels)), len(patterns)), dtype=int)
+        for pat_idx, pattern in enumerate(patterns):
+            if train:
+                projection = pattern.projection
+            elif self.soft:
+                projection = self.miner.project_soft(discrete, pattern, self.tau)
+            else:
+                projection = self.miner.project(discrete, pattern)
+            if len(projection) > 0:
+                # Sum the number of windows in each time series where pattern occurs
+                ts_indices = np.array([labels[idx] for idx in projection])
+                np.add.at(col, (ts_indices, pat_idx), 1)
+        return col
 
     def _get_signals(self, X):
         """Split X into list of separate multivariate signals."""
