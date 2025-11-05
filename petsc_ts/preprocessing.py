@@ -1,5 +1,7 @@
 import numpy as np
-from sax_ts import sax
+from sax_ts import sax as general_sax
+
+from .sax import sax as efficient_sax
 
 
 class SAX:
@@ -10,6 +12,7 @@ class SAX:
         self.alpha = alpha
 
     def transform(self, X):
+        sax = efficient_sax if self.window % self.w == 0 else general_sax
         discrete = []
         labels = []
         for label, ts in enumerate(X):

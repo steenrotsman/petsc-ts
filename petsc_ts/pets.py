@@ -56,11 +56,18 @@ class PetsTransformer(BaseTransformer):
         self._data = []
 
     def fit(self, X, y=None):
+        # For MR-PETSC, maximum window size is length of shortest time series in X
+        limit = min(row.shape[1] for row in X)
         # Mine each multivariate signal separately
         for dimension, ts in enumerate(self._get_signals(X)):
             # Start with window at min ts length and reduce window each iteration
             if self.multiresolution:
-                self.sax.window = min(row.shape[1] for row in X)
+                # Check if w complies with limit
+                if self.w > limit:
+                    raise ValueError(
+                        f"w can be at most the size of the shortest time series in the collection. {self.w=}, {limit=}."
+                    )
+                self.sax.window = self.w
 
             while True:
                 if self.verbosity >= 1:
@@ -82,8 +89,8 @@ class PetsTransformer(BaseTransformer):
 
                 # Add more patterns with halved window while window >= SAX word size
                 if self.multiresolution:
-                    self.sax.window //= 2
-                    if self.sax.window < self.w:
+                    self.sax.window *= 2
+                    if self.sax.window > limit:
                         break
                 else:
                     break
