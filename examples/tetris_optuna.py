@@ -26,8 +26,6 @@ def main():
         w = trial.suggest_int("w", 10, 150)
         max_stride = max(1, w // 2)
         stride = trial.suggest_int("stride", 1, max_stride)
-        max_window = min(w * 50, series_length)
-        window = trial.suggest_int("window", w, w*100 if w*100 < max_window else max_window)
         alpha = trial.suggest_int("alpha", 2, 10)
         k = trial.suggest_int("k", 10, 500)
 
@@ -46,7 +44,6 @@ def main():
 
             # Create classifier with sampled hyperparameters
             pets = PetsClassifier(
-                window=window,
                 k=k,
                 w=w,
                 stride=stride,
@@ -75,13 +72,11 @@ def main():
 
     # recompute safe window bound for test training (just reusing series_length)
     w_best = best_params["w"]
-    window_best = best_params["window"]
     stride_best = best_params["stride"]
     alpha_best = best_params["alpha"]
     k_best = best_params["k"]
 
     pets_best = PetsClassifier(
-        window=window_best,
         k=k_best,
         multiresolution=True,
         w=w_best,
